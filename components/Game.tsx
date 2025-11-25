@@ -1,7 +1,7 @@
  "use client";
 
 import { useEffect, useRef } from "react";
-import { Application, Graphics } from "pixi.js";
+import { Application, Assets, Sprite } from "pixi.js";
 
 export default function Game() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -29,19 +29,18 @@ export default function Game() {
 
       container.appendChild(app.canvas);
 
-      const square = new Graphics();
-      square.rect(0, 0, 100, 100).fill({ color: 0xff0000 }); 
-      square.pivot.set(50, 50);
-      square.position.set(app.renderer.width / 2, app.renderer.height / 2);
-      app.stage.addChild(square);
+      const texture = await Assets.load("/sprites/tank-00.svg");
+      const tank = new Sprite(texture);
+      tank.anchor.set(0.5);
+      tank.position.set(app.renderer.width / 2, app.renderer.height / 2);
+      app.stage.addChild(tank);
 
       app.ticker.add((ticker) => {
-        // deltaTime is a number (~1 at 60fps)
-        square.rotation += 0.01 * ticker.deltaTime;
+        tank.rotation += 0.01 * ticker.deltaTime;
       });
 
       app.renderer.on("resize", (width, height) => {
-        square.position.set(width / 2, height / 2);
+        tank.position.set(width / 2, height / 2);
       });
 
       app.start();
