@@ -1,7 +1,11 @@
- "use client";
+
 
 import { useEffect, useRef } from "react";
 import { Application, Assets, Sprite, Graphics } from "pixi.js";
+
+export type GameHandle = {
+  resetObstacles: () => void;
+};
 
 export default function Game() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -12,6 +16,14 @@ export default function Game() {
     const keys = new Set<string>();
     let removeHandlers: (() => void) | null = null;
     const projectiles: { sprite: Graphics; vx: number; vy: number }[] = [];
+    type Obstacle = {
+      graphic: Graphics;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
+    const obstacles: Obstacle[] = [];
 
     const setup = async () => {
       if (typeof window === "undefined") return;
@@ -40,6 +52,21 @@ export default function Game() {
       tank.scale.set(0.5);
       tank.position.set(currentApp.renderer.width / 2, currentApp.renderer.height / 2);
       currentApp.stage.addChild(tank);
+
+      const NUM_OBSTACLES = 8;
+      for (let i = 0; i < NUM_OBSTACLES; i++) {
+        const width = 40 + Math.random() * 80;
+        const height = 40 + Math.random() * 80;
+        const maxX = currentApp.renderer.width - width;
+        const maxY = currentApp.renderer.height - height;
+        const x = Math.random() * maxX;
+        const y = Math.random() * maxY;
+        const rect = new Graphics();
+        rect.rect(0, 0, width, height).fill({ color: 0x0000ff });
+        rect.position.set(x, y);
+        currentApp.stage.addChild(rect);
+        obstacles.push({ graphic: rect, x, y, width, height });
+      }
 
       const speed = 3;
       const rotationSpeed = 0.05;
@@ -108,6 +135,32 @@ export default function Game() {
           bullet.sprite.x += bullet.vx * delta;
           bullet.sprite.y += bullet.vy * delta;
 
+          let collided = false;
+          for (let j = obstacles.length - 1; j >= 0; j--) {
+            const obstacle = obstacles[j];
+            const px = bullet.sprite.x;
+            const py = bullet.sprite.y;
+            if (
+              px >= obstacle.x &&
+              px <= obstacle.x + obstacle.width &&
+              py >= obstacle.y &&
+              py <= obstacle.y + obstacle.height
+            ) {
+              currentApp.stage.removeChild(bullet.sprite);
+              bullet.sprite.destroy();
+              projectiles.splice(i, 1);
+
+              currentApp.stage.removeChild(obstacle.graphic);
+              obstacle.graphic.destroy();
+              obstacles.splice(j, 1);
+              collided = true;
+              break;
+            }
+          }
+          if (collided) {
+            continue;
+          }
+
           const offscreen =
             bullet.sprite.x < 0 ||
             bullet.sprite.x > currentApp.renderer.width ||
@@ -140,6 +193,7 @@ export default function Game() {
         app.destroy(true);
       }
       if (containerRef.current) {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         containerRef.current.innerHTML = "";
       }
     };
