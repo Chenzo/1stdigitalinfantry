@@ -1,17 +1,27 @@
 
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { Application, Assets, Sprite, Graphics } from "pixi.js";
 
 export type GameHandle = {
   resetObstacles: () => void;
 };
 
-export default function Game() {
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+const Game = forwardRef<GameHandle, {}>(function Game(_props, ref) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const generateObstaclesRef = useRef<() => void>(() => {});
+
+  useImperativeHandle(ref, () => ({
+    resetObstacles() {
+      generateObstaclesRef.current();
+    },
+  }));
 
   useEffect(() => {
     let app: Application | null = null;
+    let currentApp: Application | null = null;
     let destroyed = false;
     const keys = new Set<string>();
     let removeHandlers: (() => void) | null = null;
@@ -24,6 +34,33 @@ export default function Game() {
       height: number;
     };
     const obstacles: Obstacle[] = [];
+
+    const generateObstacles = () => {
+      if (!currentApp) return;
+
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        currentApp.stage.removeChild(obs.graphic);
+        obs.graphic.destroy();
+        obstacles.splice(i, 1);
+      }
+
+      const NUM_OBSTACLES = 8;
+      for (let i = 0; i < NUM_OBSTACLES; i++) {
+        const width = 40 + Math.random() * 80;
+        const height = 40 + Math.random() * 80;
+        const maxX = currentApp.renderer.width - width;
+        const maxY = currentApp.renderer.height - height;
+        const x = Math.random() * maxX;
+        const y = Math.random() * maxY;
+        const rect = new Graphics();
+        rect.rect(0, 0, width, height).fill({ color: 0x0000ff });
+        rect.position.set(x, y);
+        currentApp.stage.addChild(rect);
+        obstacles.push({ graphic: rect, x, y, width, height });
+      }
+    };
+    generateObstaclesRef.current = generateObstacles;
 
     const setup = async () => {
       if (typeof window === "undefined") return;
@@ -42,7 +79,7 @@ export default function Game() {
         return;
       }
 
-      const currentApp = app;
+      currentApp = app;
 
       container.appendChild(currentApp.canvas);
 
@@ -53,20 +90,7 @@ export default function Game() {
       tank.position.set(currentApp.renderer.width / 2, currentApp.renderer.height / 2);
       currentApp.stage.addChild(tank);
 
-      const NUM_OBSTACLES = 8;
-      for (let i = 0; i < NUM_OBSTACLES; i++) {
-        const width = 40 + Math.random() * 80;
-        const height = 40 + Math.random() * 80;
-        const maxX = currentApp.renderer.width - width;
-        const maxY = currentApp.renderer.height - height;
-        const x = Math.random() * maxX;
-        const y = Math.random() * maxY;
-        const rect = new Graphics();
-        rect.rect(0, 0, width, height).fill({ color: 0x0000ff });
-        rect.position.set(x, y);
-        currentApp.stage.addChild(rect);
-        obstacles.push({ graphic: rect, x, y, width, height });
-      }
+      generateObstacles();
 
       const speed = 3;
       const rotationSpeed = 0.05;
@@ -205,4 +229,6 @@ export default function Game() {
       style={{ width: "100%", height: "100%", background: "#111111" }}
     />
   );
-}
+
+});
+export default Game;

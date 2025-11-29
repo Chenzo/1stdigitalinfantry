@@ -1,17 +1,15 @@
- "use client";
+"use client";
 
 import { useRef } from "react";
 import Game, { type GameHandle } from "@/components/Game";
 
 export default function TanksPage() {
-
-  const gameRef = useRef<GameHandle | null>(null);
+  const gameRef = useRef<GameHandle>(null!);
 
   const handleResetClick = () => {
-    //gameRef.current?.resetObstacles();
+    gameRef.current?.resetObstacles();
     console.log("Reset clicked");
   };
-
 
   return (
     <div
